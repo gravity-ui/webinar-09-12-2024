@@ -14,9 +14,42 @@ body,
         background-color: var(--g-color-base-generic-ultralight);
     }
 
+    &__container-row {
+        justify-content: center;
+    }
+
     &__theme-button {
         position: absolute;
         top: 20px;
         right: 20px;
+    }
+
+    &__logo {
+        height: 40px;
+        margin-bottom: 60px;
+        background-image: url('./assets/gravity-logo-light.svg');
+        background-size: contain;
+        background-position: center;
+        background-repeat: no-repeat;
+
+        &_dark {
+            background-image: url('./assets/gravity-logo-dark.svg');
+        }
+    }
+
+    &__form-flex {
+        row-gap: 16px;
+        background-color: var(--g-color-base-float);
+        padding: 32px;
+        border: 1px solid var(--g-color-line-generic);
+        border-radius: var(--g-border-radius-xl);
+    }
+
+    &__form-title {
+        margin-bottom: 12px;
+    }
+
+    &__form-submit {
+        margin-top: 12px;
     }
 }
