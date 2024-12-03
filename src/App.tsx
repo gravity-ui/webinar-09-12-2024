@@ -14,7 +14,7 @@ import {
     ThemeProvider,
     useTheme,
 } from '@gravity-ui/uikit';
-import type {RealTheme} from '@gravity-ui/uikit';
+import type {RealTheme, TextInputProps} from '@gravity-ui/uikit';
 
 import './App.scss';
 
@@ -40,24 +40,94 @@ const ThemeButton = ({onClick}: {onClick: (value: RealTheme) => void}) => {
     );
 };
 
+const INPUT_PASSWORD_MIN_LENGTH = 8;
+const ValidatedItem: Record<string, {errorMessage: string; validate: (value: string) => boolean}> =
+    {
+        [INPUT_EMAIL]: {
+            validate: (value: string) => {
+                return /^\S+@\S+\.\S+$/.test(value);
+            },
+            errorMessage: 'Incorrect email',
+        },
+        [INPUT_PASSWORD]: {
+            validate: (value: string) => {
+                return value.length >= INPUT_PASSWORD_MIN_LENGTH;
+            },
+            errorMessage: `The password must contain at least ${INPUT_PASSWORD_MIN_LENGTH} characters`,
+        },
+    } as const;
+
+type ValidatedInputName = typeof INPUT_EMAIL | typeof INPUT_PASSWORD;
+type ValidationErrors = Record<ValidatedInputName, string>;
+type UseFormInputProps = {
+    name: ValidatedInputName;
+    validationErrors: ValidationErrors;
+    setValidationErrors: (value: ValidationErrors) => void;
+};
+
+const useFormInput = (props: UseFormInputProps): TextInputProps => {
+    const {name, validationErrors, setValidationErrors} = props;
+
+    return {
+        size: 'xl',
+        name,
+        placeholder: `${name.charAt(0).toUpperCase()}${name.slice(1)}`,
+        validationState: validationErrors[name] ? 'invalid' : undefined,
+        errorMessage: validationErrors[name],
+        onUpdate: () => {
+            const hasErrors = Object.values(validationErrors).some(Boolean);
+            if (!hasErrors) {
+                return;
+            }
+            const nextValidationErrors = {...validationErrors};
+            nextValidationErrors[name] = '';
+            setValidationErrors(nextValidationErrors);
+        },
+    };
+};
+
 const Form = () => {
+    const [validationErrors, setValidationErrors] = React.useState<ValidationErrors>({
+        [INPUT_EMAIL]: '',
+        [INPUT_PASSWORD]: '',
+    });
+    const emailInputProps = useFormInput({
+        name: INPUT_EMAIL,
+        validationErrors,
+        setValidationErrors,
+    });
+    const passwordInputProps = useFormInput({
+        name: INPUT_PASSWORD,
+        validationErrors,
+        setValidationErrors,
+    });
+
+    const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const data = [...new FormData(e.currentTarget).entries()] as [ValidatedInputName, string][];
+        const nextValidationErrors: ValidationErrors = {
+            [INPUT_EMAIL]: '',
+            [INPUT_PASSWORD]: '',
+        };
+        data.forEach(([name, value]) => {
+            const valid = ValidatedItem[name].validate(value);
+
+            if (!valid) {
+                nextValidationErrors[name] = ValidatedItem[name].errorMessage;
+            }
+        });
+
+        setValidationErrors(nextValidationErrors);
+    };
+
     return (
-        <form
-            onSubmit={async (e) => {
-                e.preventDefault();
-            }}
-        >
+        <form onSubmit={handleFormSubmit}>
             <Flex direction="column" className={b('form-flex')}>
                 <Text variant="header-2" className={b('form-title')}>
                     Login
                 </Text>
-                <TextInput size="xl" name={INPUT_EMAIL} placeholder="Email" />
-                <PasswordInput
-                    size="xl"
-                    name={INPUT_PASSWORD}
-                    placeholder="Password"
-                    hideCopyButton
-                />
+                <TextInput {...emailInputProps} />
+                <PasswordInput {...passwordInputProps} hideCopyButton />
                 <Button size="xl" view="action" type="submit" className={b('form-submit')}>
                     Login
                 </Button>
