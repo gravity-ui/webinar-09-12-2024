@@ -1,0 +1,22 @@
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+}
+
+.app {
+    &__container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: relative;
+        background-color: var(--g-color-base-generic-ultralight);
+    }
+
+    &__theme-button {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+    }
+}
