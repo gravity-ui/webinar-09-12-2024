@@ -2,6 +2,7 @@ import React from 'react';
 import block from 'bem-cn-lite';
 import {Moon, Sun} from '@gravity-ui/icons';
 import {
+    Alert,
     Button,
     Col,
     Container,
@@ -21,6 +22,8 @@ import './App.scss';
 const b = block('app');
 const INPUT_EMAIL = 'email';
 const INPUT_PASSWORD = 'password';
+const INPUT_PASSWORD_MIN_LENGTH = 8;
+const SUBMIT_ACTION_DELAY_MS = 3000;
 
 const ThemeButton = ({onClick}: {onClick: (value: RealTheme) => void}) => {
     const theme = useTheme();
@@ -40,7 +43,6 @@ const ThemeButton = ({onClick}: {onClick: (value: RealTheme) => void}) => {
     );
 };
 
-const INPUT_PASSWORD_MIN_LENGTH = 8;
 const ValidatedItem: Record<string, {errorMessage: string; validate: (value: string) => boolean}> =
     {
         [INPUT_EMAIL]: {
@@ -62,11 +64,27 @@ type ValidationErrors = Record<ValidatedInputName, string>;
 type UseFormInputProps = {
     name: ValidatedInputName;
     validationErrors: ValidationErrors;
+    loading: boolean;
     setValidationErrors: (value: ValidationErrors) => void;
+};
+type FormProps = {
+    onSuccsess: () => void;
 };
 
 const useFormInput = (props: UseFormInputProps): TextInputProps => {
-    const {name, validationErrors, setValidationErrors} = props;
+    const {name, validationErrors, loading, setValidationErrors} = props;
+
+    const handleInputUpdate = () => {
+        const hasErrors = Object.values(validationErrors).some(Boolean);
+
+        if (!hasErrors) {
+            return;
+        }
+
+        const nextValidationErrors = {...validationErrors};
+        nextValidationErrors[name] = '';
+        setValidationErrors(nextValidationErrors);
+    };
 
     return {
         size: 'xl',
@@ -74,35 +92,37 @@ const useFormInput = (props: UseFormInputProps): TextInputProps => {
         placeholder: `${name.charAt(0).toUpperCase()}${name.slice(1)}`,
         validationState: validationErrors[name] ? 'invalid' : undefined,
         errorMessage: validationErrors[name],
-        onUpdate: () => {
-            const hasErrors = Object.values(validationErrors).some(Boolean);
-            if (!hasErrors) {
-                return;
-            }
-            const nextValidationErrors = {...validationErrors};
-            nextValidationErrors[name] = '';
-            setValidationErrors(nextValidationErrors);
-        },
+        disabled: loading,
+        onUpdate: handleInputUpdate,
     };
 };
 
-const Form = () => {
+const submitAction = () => {
+    return new Promise((resolve) => {
+        setTimeout(resolve, SUBMIT_ACTION_DELAY_MS);
+    });
+};
+
+const Form = ({onSuccsess}: FormProps) => {
     const [validationErrors, setValidationErrors] = React.useState<ValidationErrors>({
         [INPUT_EMAIL]: '',
         [INPUT_PASSWORD]: '',
     });
+    const [loading, setLoading] = React.useState(false);
     const emailInputProps = useFormInput({
         name: INPUT_EMAIL,
         validationErrors,
+        loading,
         setValidationErrors,
     });
     const passwordInputProps = useFormInput({
         name: INPUT_PASSWORD,
         validationErrors,
+        loading,
         setValidationErrors,
     });
 
-    const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const data = [...new FormData(e.currentTarget).entries()] as [ValidatedInputName, string][];
         const nextValidationErrors: ValidationErrors = {
@@ -118,6 +138,17 @@ const Form = () => {
         });
 
         setValidationErrors(nextValidationErrors);
+
+        const hasErrors = Object.values(nextValidationErrors).some(Boolean);
+
+        if (hasErrors) {
+            return;
+        }
+
+        setLoading(true);
+        await submitAction();
+        setLoading(false);
+        onSuccsess();
     };
 
     return (
@@ -128,7 +159,13 @@ const Form = () => {
                 </Text>
                 <TextInput {...emailInputProps} />
                 <PasswordInput {...passwordInputProps} hideCopyButton />
-                <Button size="xl" view="action" type="submit" className={b('form-submit')}>
+                <Button
+                    size="xl"
+                    view="action"
+                    type="submit"
+                    className={b('form-submit')}
+                    loading={loading}
+                >
                     Login
                 </Button>
             </Flex>
@@ -138,6 +175,9 @@ const Form = () => {
 
 const App = () => {
     const [theme, setTheme] = React.useState<RealTheme>('dark');
+    const [loggedIn, setLoggedIn] = React.useState(false);
+
+    const handleFormSuccessSubmit = () => setLoggedIn(true);
 
     return (
         <ThemeProvider theme={theme}>
@@ -150,7 +190,11 @@ const App = () => {
                 </Row>
                 <Row space={5} className={b('container-row')}>
                     <Col m={6} s={12}>
-                        <Form />
+                        {loggedIn ? (
+                            <Alert theme="success" title="You've successfully logged in!" />
+                        ) : (
+                            <Form onSuccsess={handleFormSuccessSubmit} />
+                        )}
                     </Col>
                 </Row>
             </Container>
